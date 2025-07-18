@@ -104,7 +104,7 @@ def bin_data(x, y, num_bins= 10, bin_min = 0.5, bin_max=8.5):
     return bin_centers, bin_means, bin_counts
 
 
-# In[8]:
+# In[25]:
 
 
 ## convert data to 1D for plotting
@@ -137,7 +137,7 @@ all_bin_centers_cape, all_bin_means_cape, all_bin_counts_cape = bin_data(mean_pr
 
 ## low organization and high organization
 low_org_bin_centers_cape, low_org_bin_means_cape, low_org_bin_counts_cape = bin_data(mean_pr_1D[iorg_1D<0.3], mean_cape_1D[iorg_1D<0.3])
-high_org_bin_centers_cape, high_org_bin_means_cape, high_org_bin_counts_cape = bin_data(mean_pr_1D[iorg_1D>=0.5], mean_cape_1D[iorg_1D>=0.5])
+high_org_bin_centers_cape, high_org_bin_means_cape, high_org_bin_counts_cape = bin_data(mean_pr_1D[iorg_1D>0.5], mean_cape_1D[iorg_1D>0.5])
 
 ## low intensity and high intensity
 low_pr_bin_centers_cape, low_pr_bin_means_cape, low_pr_bin_counts_cape = bin_data(mean_pr_1D[cell_pr_1D<p20_intensity], mean_cape_1D[cell_pr_1D<p20_intensity])
@@ -149,14 +149,14 @@ all_bin_centers_mcape, all_bin_means_mcape, all_bin_counts_mcape = bin_data(mean
 
 ## low organization and high organization
 low_org_bin_centers_mcape, low_org_bin_means_mcape, low_org_bin_counts_mcape = bin_data(mean_pr_1D[iorg_1D<0.3], max_cape_1D[iorg_1D<0.3])
-high_org_bin_centers_mcape, high_org_bin_means_mcape, high_org_bin_counts_mcape = bin_data(mean_pr_1D[iorg_1D>=0.5], max_cape_1D[iorg_1D>=0.5])
+high_org_bin_centers_mcape, high_org_bin_means_mcape, high_org_bin_counts_mcape = bin_data(mean_pr_1D[iorg_1D>0.5], max_cape_1D[iorg_1D>0.5])
 
 ## low intensity and high intensity
 low_pr_bin_centers_mcape, low_pr_bin_means_mcape, low_pr_bin_counts_mcape = bin_data(mean_pr_1D[cell_pr_1D<p20_intensity], max_cape_1D[cell_pr_1D<p20_intensity])
 high_pr_bin_centers_mcape, high_pr_bin_means_mcape, high_pr_bin_counts_mcape = bin_data(mean_pr_1D[cell_pr_1D>p80_intensity], max_cape_1D[cell_pr_1D>p80_intensity])
 
 
-# In[24]:
+# In[26]:
 
 
 # Create figure and axes
