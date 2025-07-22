@@ -63,48 +63,186 @@ ds_cape["time"] = ds_cape["time"].dt.floor("D")
 get_ipython().run_cell_magic('time', '', '## ERA5 environmental conditions\ntcwv = ds_tcwv["tcwv"].sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).where(lsm == 0).compute()\n# max CAPE\nmax_cape = ds_max_cape["cape"].sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).where(lsm == 0).compute()\ncape = ds_cape["cape"].sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).where(lsm == 0).compute()\n\n## IMERG daily\nmean_pr_match = mean_pr.sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).compute()\niorg_match = iorg.sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).compute()\ncell_pr_match = cell_pr.resample(time=\'1D\').mean().where(lsm == 0).sel(time=slice(mean_pr["time"][0],ds_tcwv["time"][-1])).compute()                           \n')
 
 
-# In[5]:
-
-
-plt.figure(figsize=(12,5))
-plt.scatter(mean_pr_match.values.flatten(), tcwv.values.flatten(), s=5,
-            c=iorg_match.values.flatten(), vmin=0, vmax=1, cmap="bwr")
-plt.colorbar()
-plt.xlabel("Mean precipitation ()")
-plt.ylabel("Total column water vapour (kg m$^{-2}$)")
-
-
 # In[6]:
 
 
-def bin_data(x, y, num_bins= 10, bin_min = 0.5, bin_max=8.5):
+def bin_data_with_percentile_subsets(
+    x, y, z, percentiles=(20, 80), num_bins=10, bin_min=0.1, bin_max=8.1
+):
     '''
-    The bins are for mean precipitation in this case, so I won't change them.
+    Bin data by x, average y in each bin, and compute 20th/80th percentile split of z.
+    Also returns mean x and y for high/low z subsets within each bin, with their counts.
     '''
 
-    # Remove NaNs (important if data has missing values)
-    mask = ~np.isnan(x) & ~np.isnan(y)
+    # Remove NaNs across all three arrays
+    mask = ~np.isnan(x) & ~np.isnan(y) & ~np.isnan(z)
     x = x[mask]
     y = y[mask]
-    
-    # Define bins for x (mean_pr)
-    # num_bins = 10  # or choose based on your data
+    z = z[mask]
+
+    # Define bins and get bin indices
     bins = np.linspace(bin_min, bin_max, num_bins + 1)
-    
-    # Compute bin centers for plotting
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
-    
-    # Digitize x to get which bin each value falls into
     bin_idx = np.digitize(x, bins)
-    
-    # Compute mean y (tcwv) for each bin
-    # Compute binned means and counts
-    bin_means = [np.nanmean(y[bin_idx == i]) if np.any(bin_idx == i) else np.nan for i in range(1, len(bins))]
-    bin_counts = [np.nansum(bin_idx == i) for i in range(1, len(bins))]
-    return bin_centers, bin_means, bin_counts
+
+    # Output lists
+    bin_counts_all = []
+    bin_counts_low = []
+    bin_counts_high = []
+
+    mean_y_all = []
+    mean_x_all = []
+
+    mean_y_low = []
+    mean_x_low = []
+
+    mean_y_high = []
+    mean_x_high = []
+
+    for i in range(1, len(bins)):
+        idx_bin = bin_idx == i
+        if np.any(idx_bin):
+            # All data in bin
+            x_bin = x[idx_bin]
+            y_bin = y[idx_bin]
+            z_bin = z[idx_bin]
+
+            # Count all
+            bin_counts_all.append(len(x_bin))
+            mean_x_all.append(np.nanmean(x_bin))
+            mean_y_all.append(np.nanmean(y_bin))
+
+            # Compute 20th and 80th percentile of z
+            low_thresh = np.nanpercentile(z_bin, percentiles[0])
+            high_thresh = np.nanpercentile(z_bin, percentiles[1])
+
+            # Low subset
+            idx_low = z_bin <= low_thresh
+            bin_counts_low.append(np.sum(idx_low))
+            mean_x_low.append(np.nanmean(x_bin[idx_low]))
+            mean_y_low.append(np.nanmean(y_bin[idx_low]))
+
+            # High subset
+            idx_high = z_bin >= high_thresh
+            bin_counts_high.append(np.sum(idx_high))
+            mean_x_high.append(np.nanmean(x_bin[idx_high]))
+            mean_y_high.append(np.nanmean(y_bin[idx_high]))
+
+        else:
+            bin_counts_all.append(0)
+            bin_counts_low.append(0)
+            bin_counts_high.append(0)
+
+            mean_x_all.append(np.nan)
+            mean_y_all.append(np.nan)
+            mean_x_low.append(np.nan)
+            mean_y_low.append(np.nan)
+            mean_x_high.append(np.nan)
+            mean_y_high.append(np.nan)
+
+    return {
+        "bin_centers": bin_centers,
+        "mean_x_all": mean_x_all,
+        "mean_y_all": mean_y_all,
+        "count_all": bin_counts_all,
+        "mean_x_low": mean_x_low,
+        "mean_y_low": mean_y_low,
+        "count_low": bin_counts_low,
+        "mean_x_high": mean_x_high,
+        "mean_y_high": mean_y_high,
+        "count_high": bin_counts_high,
+    }
 
 
-# In[25]:
+def bin_data_with_iorg_subsets(
+    x, y, z, thresh=(0.3, 0.5), num_bins=10, bin_min=0.1, bin_max=8.1
+):
+    '''
+    Bin data by x, average y in each bin, and compute 20th/80th percentile split of z.
+    Also returns mean x and y for high/low z subsets within each bin.
+    '''
+
+    # Remove NaNs across all three arrays
+    mask = ~np.isnan(x) & ~np.isnan(y) & ~np.isnan(z)
+    x = x[mask]
+    y = y[mask]
+    z = z[mask]
+
+    # Define bins and get bin indices
+    bins = np.linspace(bin_min, bin_max, num_bins + 1)
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
+    bin_idx = np.digitize(x, bins)
+
+    # Output lists
+    bin_counts_all = []
+    bin_counts_low = []
+    bin_counts_high = []
+
+    mean_y_all = []
+    mean_x_all = []
+
+    mean_y_low = []
+    mean_x_low = []
+
+    mean_y_high = []
+    mean_x_high = []
+
+    for i in range(1, len(bins)):
+        idx_bin = bin_idx == i
+        if np.any(idx_bin):
+            # All data in bin
+            x_bin = x[idx_bin]
+            y_bin = y[idx_bin]
+            z_bin = z[idx_bin]
+
+            # Count all
+            bin_counts_all.append(len(x_bin))
+            mean_x_all.append(np.nanmean(x_bin))
+            mean_y_all.append(np.nanmean(y_bin))
+
+            # get threshold for IORG
+            low_thresh = thresh[0]
+            high_thresh = thresh[1]
+
+            # Low subset
+            idx_low = z_bin < low_thresh
+            bin_counts_low.append(np.sum(idx_low))
+            mean_x_low.append(np.nanmean(x_bin[idx_low]))
+            mean_y_low.append(np.nanmean(y_bin[idx_low]))
+
+            # High subset
+            idx_high = z_bin >= high_thresh
+            bin_counts_high.append(np.sum(idx_high))
+            mean_x_high.append(np.nanmean(x_bin[idx_high]))
+            mean_y_high.append(np.nanmean(y_bin[idx_high]))
+
+        else:
+            bin_counts_all.append(0)
+            bin_counts_low.append(0)
+            bin_counts_high.append(0)
+
+            mean_x_all.append(np.nan)
+            mean_y_all.append(np.nan)
+            mean_x_low.append(np.nan)
+            mean_y_low.append(np.nan)
+            mean_x_high.append(np.nan)
+            mean_y_high.append(np.nan)
+
+    return {
+        "bin_centers": bin_centers,
+        "mean_x_all": mean_x_all,
+        "mean_y_all": mean_y_all,
+        "count_all": bin_counts_all,
+        "mean_x_low": mean_x_low,
+        "mean_y_low": mean_y_low,
+        "count_low": bin_counts_low,
+        "mean_x_high": mean_x_high,
+        "mean_y_high": mean_y_high,
+        "count_high": bin_counts_high,
+    }
+
+
+# In[7]:
 
 
 ## convert data to 1D for plotting
@@ -113,50 +251,28 @@ tcwv_1D = tcwv.values.flatten()
 iorg_1D = iorg_match.values.flatten()
 cell_pr_1D = cell_pr_match.values.flatten()
 mean_cape_1D = cape.values.flatten()
-
 max_cape_1D =  max_cape.values.flatten()
 
 #### TCWV
 ## All data bins
-all_bin_centers, all_bin_means, all_bin_counts = bin_data(mean_pr_1D, tcwv_1D)
+tcwv_result = bin_data_with_percentile_subsets(mean_pr_1D, tcwv_1D, cell_pr_1D)
+tcwv_iorg_result = bin_data_with_iorg_subsets(mean_pr_1D, tcwv_1D, iorg_1D)
 
-## low organization and high organization
-low_org_bin_centers, low_org_bin_means, low_org_bin_counts = bin_data(mean_pr_1D[iorg_1D<0.3], tcwv_1D[iorg_1D<0.3])
-high_org_bin_centers, high_org_bin_means, high_org_bin_counts = bin_data(mean_pr_1D[iorg_1D>=0.5], tcwv_1D[iorg_1D>=0.5])
-
-# Try to filter high and low intensity based on percentiles
-p20_intensity = np.nanpercentile(cell_pr_1D,50)
-p80_intensity = np.nanpercentile(cell_pr_1D,80)
-
-low_pr_bin_centers, low_pr_bin_means, low_pr_bin_counts = bin_data(mean_pr_1D[cell_pr_1D<p20_intensity], tcwv_1D[cell_pr_1D<p20_intensity])
-high_pr_bin_centers, high_pr_bin_means, high_pr_bin_counts = bin_data(mean_pr_1D[cell_pr_1D>p80_intensity], tcwv_1D[cell_pr_1D>p80_intensity])
 
 #### MEAN CAPE
 ## All data bins
-all_bin_centers_cape, all_bin_means_cape, all_bin_counts_cape = bin_data(mean_pr_1D, mean_cape_1D)
-
-## low organization and high organization
-low_org_bin_centers_cape, low_org_bin_means_cape, low_org_bin_counts_cape = bin_data(mean_pr_1D[iorg_1D<0.3], mean_cape_1D[iorg_1D<0.3])
-high_org_bin_centers_cape, high_org_bin_means_cape, high_org_bin_counts_cape = bin_data(mean_pr_1D[iorg_1D>0.5], mean_cape_1D[iorg_1D>0.5])
-
-## low intensity and high intensity
-low_pr_bin_centers_cape, low_pr_bin_means_cape, low_pr_bin_counts_cape = bin_data(mean_pr_1D[cell_pr_1D<p20_intensity], mean_cape_1D[cell_pr_1D<p20_intensity])
-high_pr_bin_centers_cape, high_pr_bin_means_cape, high_pr_bin_counts_cape = bin_data(mean_pr_1D[cell_pr_1D>p80_intensity], mean_cape_1D[cell_pr_1D>p80_intensity])
+mean_cape_result = bin_data_with_percentile_subsets(mean_pr_1D, mean_cape_1D, cell_pr_1D)
+mean_cape_iorg_result = bin_data_with_iorg_subsets(mean_pr_1D, mean_cape_1D, iorg_1D)
 
 #### MAX CAPE
 ## All data bins
-all_bin_centers_mcape, all_bin_means_mcape, all_bin_counts_mcape = bin_data(mean_pr_1D, max_cape_1D)
-
-## low organization and high organization
-low_org_bin_centers_mcape, low_org_bin_means_mcape, low_org_bin_counts_mcape = bin_data(mean_pr_1D[iorg_1D<0.3], max_cape_1D[iorg_1D<0.3])
-high_org_bin_centers_mcape, high_org_bin_means_mcape, high_org_bin_counts_mcape = bin_data(mean_pr_1D[iorg_1D>0.5], max_cape_1D[iorg_1D>0.5])
-
-## low intensity and high intensity
-low_pr_bin_centers_mcape, low_pr_bin_means_mcape, low_pr_bin_counts_mcape = bin_data(mean_pr_1D[cell_pr_1D<p20_intensity], max_cape_1D[cell_pr_1D<p20_intensity])
-high_pr_bin_centers_mcape, high_pr_bin_means_mcape, high_pr_bin_counts_mcape = bin_data(mean_pr_1D[cell_pr_1D>p80_intensity], max_cape_1D[cell_pr_1D>p80_intensity])
+max_cape_result = bin_data_with_percentile_subsets(mean_pr_1D, max_cape_1D, cell_pr_1D)
+max_cape_iorg_result = bin_data_with_iorg_subsets(mean_pr_1D, max_cape_1D, iorg_1D)
 
 
-# In[26]:
+
+
+# In[11]:
 
 
 # Create figure and axes
@@ -164,48 +280,52 @@ fig = plt.figure(figsize=(12,8))
 ax1= fig.add_subplot(221)
 # Plot scatter and binned mean
 # ax1.scatter(x, y, alpha=0.2, label='Raw data')
-ax1.plot(all_bin_centers, all_bin_means, color='k', 
-         marker='o', markersize=5,linewidth=2,label='All',alpha=0.7)
+ax1.plot(tcwv_result["mean_x_all"], tcwv_result["mean_y_all"],
+         marker='o', markersize=5, label="All", color='black')
 
-ax1.plot(low_org_bin_centers, low_org_bin_means, color='skyblue',
-         marker='o', markersize=5,linewidth=1,label='Low org',alpha=0.7)
-ax1.plot(high_org_bin_centers, high_org_bin_means, color='blue',
-         marker='o', markersize=5,linewidth=1,label='High org',alpha=0.7)
+ax1.plot(tcwv_iorg_result["mean_x_low"], tcwv_iorg_result["mean_y_low"], color='skyblue',
+         marker='o', markersize=5,linewidth=1,label='Low org')
+ax1.plot(tcwv_iorg_result["mean_x_high"], tcwv_iorg_result["mean_y_high"], color='blue',
+         marker='o', markersize=5,linewidth=1,label='High org')
 
-ax1.plot(low_pr_bin_centers, low_pr_bin_means, color='orange',
-         marker='o', markersize=5,linewidth=1,label='Low intensity',alpha=0.7)
-ax1.plot(high_pr_bin_centers, high_pr_bin_means, color='red',
-         marker='o', markersize=5,linewidth=1,label='High intensity',alpha=0.7)
+ax1.plot(tcwv_result["mean_x_low"], tcwv_result["mean_y_low"], linewidth=1,
+         marker='o', markersize=5,label="Low intensity", color='orange')
+ax1.plot(tcwv_result["mean_x_high"], tcwv_result["mean_y_high"],linewidth=1,
+         marker='o', markersize=5,label="High intensity", color='red')
 
-ax1.set_xlabel('Mean precipitation (mm hr$^{-1}$)')
+ax1.set_xlabel('Mean precipitation (mm h$^{-1}$)')
 ax1.set_ylabel('TCWV (kg m$^{-2}$)')
 ax1.legend(loc='upper left')
-ax1.set_xlim([0.5, 8.5])
-ax1.set_ylim([40,75])
+ax1.set_xlim([0.1, 8.1])
+ax1.set_ylim([40,85])
 lines, labels = ax1.get_legend_handles_labels()
 
 ax1.legend(lines , labels , loc='upper left',ncol=3)
+ax1.set_title("(a)")
 # Add second y-axis for bin counts
 ax2= fig.add_subplot(222)
 
-ax2.plot(all_bin_centers_cape, all_bin_means_cape, color='k', 
-         marker='o', markersize=5,linewidth=2,label='All',alpha=0.7)
+ax2.plot(mean_cape_result["mean_x_all"], mean_cape_result["mean_y_all"],
+         marker='o', markersize=5, label="All", color='black')
 
-ax2.plot(low_org_bin_centers_cape, low_org_bin_means_cape, color='skyblue', 
-         marker='o', markersize=5, linewidth=1,label='Low org',alpha=0.7)
-ax2.plot(high_org_bin_centers_cape, high_org_bin_means_cape, color='blue', 
-         marker='o', markersize=5, linewidth=1,label='High org',alpha=0.7)
 
-ax2.plot(low_pr_bin_centers_cape, low_pr_bin_means_cape, color='orange', 
-         marker='o', markersize=5, linewidth=1,label='Low intensity',alpha=0.7)
-ax2.plot(high_pr_bin_centers_cape, high_pr_bin_means_cape, color='red',
-         marker='o', markersize=5, linewidth=1,label='High intensity',alpha=0.7)
+ax2.plot(mean_cape_iorg_result["mean_x_low"], mean_cape_iorg_result["mean_y_low"], color='skyblue',
+         marker='o', markersize=5,linewidth=1,label='Low org')
+ax2.plot(mean_cape_iorg_result["mean_x_high"], mean_cape_iorg_result["mean_y_high"], color='blue',
+         marker='o', markersize=5,linewidth=1,label='High org')
 
-ax2.set_xlabel('Mean precipitation (mm hr$^{-1}$)')
+ax2.plot(mean_cape_result["mean_x_low"], mean_cape_result["mean_y_low"], linewidth=1,
+         marker='o', markersize=5,label="Low intensity", color='orange')
+ax2.plot(mean_cape_result["mean_x_high"], mean_cape_result["mean_y_high"],linewidth=1,
+         marker='o', markersize=5,label="High intensity", color='red')
+
+ax2.set_xlabel('Mean precipitation (mm h$^{-1}$)')
 ax2.set_ylabel('Mean CAPE (J kg$^{-1}$)')
 ax2.legend(loc='upper left')
-ax2.set_xlim([0.5, 8.5])
-# ax3.set_ylim([40,75])
+ax2.set_xlim([0.1, 8.1])
+ax2.set_ylim([100,1700])
+ax2.set_title("(b)")
+
 lines2, labels2 = ax2.get_legend_handles_labels()
 
 ax2.legend(lines2, labels2, loc='upper left',ncol=3)
@@ -216,45 +336,47 @@ ax2.legend(lines2, labels2, loc='upper left',ncol=3)
 ax3= fig.add_subplot(223)
 # Plot scatter and binned mean
 
-ax3.plot(all_bin_centers_mcape, all_bin_means_mcape, color='k', 
-         marker='o', markersize=5,linewidth=2,label='All',alpha=0.7)
+ax3.plot(max_cape_result["mean_x_all"], max_cape_result["mean_y_all"],
+         marker='o', markersize=5, label="All", color='black')
 
-ax3.plot(low_org_bin_centers_mcape, low_org_bin_means_mcape, color='skyblue', 
-         marker='o', markersize=5, linewidth=1,label='Low org',alpha=0.7)
-ax3.plot(high_org_bin_centers_mcape, high_org_bin_means_mcape, color='blue', 
-         marker='o', markersize=5, linewidth=1,label='High org',alpha=0.7)
 
-ax3.plot(low_pr_bin_centers_mcape, low_pr_bin_means_mcape, color='orange', 
-         marker='o', markersize=5, linewidth=1,label='Low intensity',alpha=0.7)
-ax3.plot(high_pr_bin_centers_mcape, high_pr_bin_means_mcape, color='red',
-         marker='o', markersize=5, linewidth=1,label='High intensity',alpha=0.7)
+ax3.plot(max_cape_iorg_result["mean_x_low"], max_cape_iorg_result["mean_y_low"], color='skyblue',
+         marker='o', markersize=5,linewidth=1,label='Low org')
+ax3.plot(max_cape_iorg_result["mean_x_high"], max_cape_iorg_result["mean_y_high"], color='blue',
+         marker='o', markersize=5,linewidth=1,label='High org')
 
-ax3.set_xlabel('Mean precipitation (mm hr$^{-1}$)')
+ax3.plot(max_cape_result["mean_x_low"], max_cape_result["mean_y_low"], linewidth=1,
+         marker='o', markersize=5,label="Low intensity", color='orange')
+ax3.plot(max_cape_result["mean_x_high"], max_cape_result["mean_y_high"],linewidth=1,
+         marker='o', markersize=5,label="High intensity", color='red')
+
+ax3.set_xlabel('Mean precipitation (mm h$^{-1}$)')
 ax3.set_ylabel('Max CAPE (J kg$^{-1}$)')
 ax3.legend(loc='upper left')
-ax3.set_xlim([0.5, 8.5])
-# ax3.set_ylim([40,75])
+ax3.set_xlim([0.1, 8.1])
+ax3.set_ylim([500,2750])
 lines3, labels3 = ax3.get_legend_handles_labels()
+ax3.set_title("(c)")
 
 ax3.legend(lines3 , labels3 , loc='upper left',ncol=3)
 # Add second y-axis for bin counts
 ax4= fig.add_subplot(224)
 
-ax4.step(all_bin_centers_cape, all_bin_counts_cape, where='mid', color='k', linewidth=2, label='All')
-ax4.step(low_org_bin_centers_cape, low_org_bin_counts_cape, where='mid', color='skyblue', linewidth=1, label='Low org')
-ax4.step(high_org_bin_centers_cape, high_org_bin_counts_cape, where='mid', color='blue', linewidth=1, label='High org')
+ax4.step(tcwv_result["mean_x_all"], tcwv_result["count_all"], where='mid', color='k', linewidth=2, label='All')
+ax4.step(tcwv_iorg_result["mean_x_low"], tcwv_iorg_result["count_low"], where='mid', color='skyblue', linewidth=1, label='Low org')
+ax4.step(tcwv_iorg_result["mean_x_high"], tcwv_iorg_result["count_high"], where='mid', color='blue', linewidth=1, label='High org')
 
-ax4.step(low_pr_bin_centers_cape, low_pr_bin_counts_cape, where='mid', color='orange', linewidth=1, label='Low intensity')
-ax4.step(high_pr_bin_centers_cape, high_pr_bin_counts_cape, where='mid', color='red', linewidth=1, label='High intensity')
-ax4.set_xlabel('Mean precipitation (mm hr$^{-1}$)')
+ax4.step(tcwv_result["mean_x_all"], tcwv_result["count_low"], where='mid', color='orange', linewidth=1, label='Low intensity')
+ax4.step(tcwv_result["mean_x_all"], tcwv_result["count_high"], where='mid', color='red', linewidth=1, label='High intensity')
+ax4.set_xlabel('Mean precipitation (mm h$^{-1}$)')
 ax4.set_ylabel('Number of samples')
 ax4.set_yscale('log')
-ax4.set_xlim([0.5, 8.5])
+ax4.set_xlim([0.1, 8.1])
 # Optional: add legend for second axis
 lines4, labels4 = ax4.get_legend_handles_labels()
 ax4.legend(lines4 , labels4 , loc='upper left',ncol=3)
 
-
+ax4.set_title("(d)")
 
 ax4.set_ylim([1,10**8])
 
