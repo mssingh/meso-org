@@ -82,10 +82,10 @@ iorg_1D = iorg_match.values.flatten()
 max_pr_1D = max_pr_match.values.flatten()
 
 
-# In[11]:
+# In[67]:
 
 
-def compute_2d_hist(x, y, xmin=0, xmax=7, ymin=None, ymax=None, nbins=50, counts_thresh=10):
+def compute_2d_hist(x, y, xmin=0.1, xmax=5, ymin=None, ymax=None, nbins=50, counts_thresh=10):
     '''
     Compute a 2D histogram of data density based on the input x and y
     '''
@@ -107,17 +107,17 @@ def compute_2d_hist(x, y, xmin=0, xmax=7, ymin=None, ymax=None, nbins=50, counts
     return X, Y, counts_masked.T
 
 
-# In[12]:
+# In[69]:
 
 
-X1, Y1, mean_max_hist = compute_2d_hist(mean_pr_1D, max_pr_1D, nbins=60, counts_thresh=10)
-X2, Y2, mean_iorg_hist = compute_2d_hist(mean_pr_1D, iorg_1D, nbins=60, counts_thresh=10)
+X1, Y1, mean_max_hist = compute_2d_hist(mean_pr_1D, max_pr_1D, ymin=0.1, ymax=150, nbins=50, counts_thresh=10)
+X2, Y2, mean_iorg_hist = compute_2d_hist(mean_pr_1D, iorg_1D, nbins=50, counts_thresh=10)
 
 
-# In[43]:
+# In[70]:
 
 
-def compute_2d_hist_stat(x, y, z, xmin=0, xmax=7, ymin=None, ymax=None, nbins=50, counts_thresh=10):
+def compute_2d_hist_stat(x, y, z, xmin=0.1, xmax=5, ymin=None, ymax=None, nbins=50, counts_thresh=10):
     '''
     Compute a 2D histogram of data density based on the input x and y
     And get the stats of the 2D histogram based on z (environmental conditions in our case)
@@ -153,14 +153,14 @@ def compute_2d_hist_stat(x, y, z, xmin=0, xmax=7, ymin=None, ymax=None, nbins=50
     
 
 
-# In[44]:
+# In[71]:
 
 
-mean_max_iorg = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, iorg_1D, nbins=60, counts_thresh=10)
-mean_iorg_max = compute_2d_hist_stat(mean_pr_1D, iorg_1D, max_pr_1D, nbins=60, counts_thresh=10)
+mean_max_iorg = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, iorg_1D,ymin=0.1, ymax=150, nbins=50, counts_thresh=10)
+mean_iorg_max = compute_2d_hist_stat(mean_pr_1D, iorg_1D, max_pr_1D, nbins=50, counts_thresh=10)
 
 
-# In[54]:
+# In[73]:
 
 
 ### Figure 5
@@ -168,28 +168,28 @@ fig = plt.figure(figsize=(12, 8))
 ax1 = fig.add_subplot(221)
 pcm1 = plt.pcolormesh(
     X1, Y1, mean_max_hist,       # note the transpose
-    norm=LogNorm(vmin=10, vmax=10**6),
+    norm=LogNorm(vmin=10, vmax=10**5),
     cmap='RdYlBu_r',
     shading='auto'
 )
 plt.colorbar(pcm1, label="Count",extend ="max")
 plt.xlabel("Max precipitation (mm h$^{-1}$)")
 plt.ylabel("Mean precipitation (mm h$^{-1}$)")
-ax1.set_xlim([0,7])
-ax1.text(6,180, "(a)",fontsize=14, fontweight="bold") # x, y, s
+ax1.set_xlim([0,5])
+ax1.text(4.5,135, "(a)",fontsize=14, fontweight="bold") # x, y, s
 
 ax2 = fig.add_subplot(222)
 pcm2 = plt.pcolormesh(
     X2, Y2, mean_iorg_hist,       # note the transpose
-    norm=LogNorm(vmin=10, vmax=10**6),
+    norm=LogNorm(vmin=10, vmax=10**5),
     cmap='RdYlBu_r',
     shading='auto'
 )
 plt.colorbar(pcm2, label="Count",extend ="max")
 plt.xlabel("Mean precipitation (mm h$^{-1}$)")
 plt.ylabel("I$_{org}$")
-ax2.set_xlim([0,7])
-ax2.text(6,0.85, "(b)",fontsize=14, fontweight="bold") # x, y, s
+ax2.set_xlim([0,5])
+ax2.text(4.5,0.85, "(b)",fontsize=14, fontweight="bold") # x, y, s
 
 
 ax3 = fig.add_subplot(223)
@@ -203,8 +203,8 @@ cbar = plt.colorbar(pcm3, ax=ax3, label="I$_{org}$",extend="both")
 
 ax3.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax3.set_ylabel("Max precipitation (mm h$^{-1}$)")
-ax3.set_xlim([0,7])
-ax3.text(6,180, "(c)",fontsize=14, fontweight="bold") # x, y, s
+ax3.set_xlim([0,5])
+ax3.text(4.5,135, "(c)",fontsize=14, fontweight="bold") # x, y, s
 
 ax4 = fig.add_subplot(224)
 pcm4 = ax4.pcolormesh(
@@ -217,9 +217,9 @@ cbar = plt.colorbar(pcm4, ax=ax4, label="Max precipitation (mm h$^{-1}$)",extend
 
 ax4.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax4.set_ylabel("I$_{org}$")
-ax4.set_xlim([0,7])
+ax4.set_xlim([0,5])
 
-ax4.text(6,0.85, "(d)",fontsize=14, fontweight="bold") # x, y, s
+ax4.text(4.5,0.85, "(d)",fontsize=14, fontweight="bold") # x, y, s
 
 plt.tight_layout()
 
@@ -230,25 +230,25 @@ plt.show()
 
 # ## Figure 6
 
-# In[14]:
+# In[74]:
 
 
 tcwv_1D = tcwv.values.flatten()
 max_cape_1D =  max_cape.values.flatten()
 
 
-# In[32]:
+# In[75]:
 
 
 ## TCWV
-mean_max_tcwv = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, tcwv_1D, nbins=60, counts_thresh=10)
-mean_iorg_tcwv = compute_2d_hist_stat(mean_pr_1D, iorg_1D, tcwv_1D, nbins=60, counts_thresh=10)
+mean_max_tcwv = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, tcwv_1D, ymin=0.1, ymax=150, nbins=50, counts_thresh=10)
+mean_iorg_tcwv = compute_2d_hist_stat(mean_pr_1D, iorg_1D, tcwv_1D, nbins=50, counts_thresh=10)
 ## max CAPE
-mean_max_cape = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, max_cape_1D, nbins=60, counts_thresh=10)
-mean_iorg_cape = compute_2d_hist_stat(mean_pr_1D, iorg_1D, max_cape_1D, nbins=60, counts_thresh=10)
+mean_max_cape = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, max_cape_1D, ymin=0.1, ymax=150, nbins=50, counts_thresh=10)
+mean_iorg_cape = compute_2d_hist_stat(mean_pr_1D, iorg_1D, max_cape_1D, nbins=50, counts_thresh=10)
 
 
-# In[58]:
+# In[76]:
 
 
 fig = plt.figure(figsize=(12, 8))
@@ -263,8 +263,8 @@ cbar = plt.colorbar(pcm1, ax=ax1, label="TCWV (kg m$^{-2}$)",extend="both")
 
 ax1.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax1.set_ylabel("Max precipitation (mm h$^{-1}$)")
-ax1.set_xlim([0,7])
-ax1.text(6,180, "(a)",fontsize=14, fontweight="bold") # x, y, s
+ax1.set_xlim([0,5])
+ax1.text(4.5,135, "(a)",fontsize=14, fontweight="bold") # x, y, s
 
 ax2 = fig.add_subplot(223)
 pcm2 = ax2.pcolormesh(
@@ -277,8 +277,8 @@ cbar = plt.colorbar(pcm2, ax=ax2, label="Max CAPE (J kg$^{-1}$)",extend="both")
 
 ax2.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax2.set_ylabel("Max precipitation (mm h$^{-1}$)")
-ax2.set_xlim([0,7])
-ax2.text(6,180, "(c)",fontsize=14, fontweight="bold") # x, y, s
+ax2.set_xlim([0,5])
+ax2.text(4.5,135, "(c)",fontsize=14, fontweight="bold") # x, y, s
 
 
 ax3 = fig.add_subplot(222)
@@ -292,8 +292,8 @@ cbar = plt.colorbar(pcm3, ax=ax3, label="TCWV (kg m$^{-2}$)",extend="both")
 
 ax3.set_ylabel("I$_{org}$")
 ax3.set_xlabel("Mean precipitation (mm h$^{-1}$)")
-ax3.set_xlim([0,7])
-ax3.text(6,0.85, "(b)",fontsize=14, fontweight="bold") # x, y, s
+ax3.set_xlim([0,5])
+ax3.text(4,0.85, "(b)",fontsize=14, fontweight="bold") # x, y, s
 
 ax4 = fig.add_subplot(224)
 pcm4 = ax4.pcolormesh(
@@ -306,8 +306,8 @@ cbar = plt.colorbar(pcm4, ax=ax4, label="Max CAPE (J kg$^{-1}$)",extend="both")
 
 ax4.set_ylabel("I$_{org}$")
 ax4.set_xlabel("Mean precipitation (mm h$^{-1}$)")
-ax4.set_xlim([0,7])
-ax4.text(6,0.85, "(d)",fontsize=14, fontweight="bold") # x, y, s
+ax4.set_xlim([0,5])
+ax4.text(4,0.85, "(d)",fontsize=14, fontweight="bold") # x, y, s
 
 plt.tight_layout()
 
