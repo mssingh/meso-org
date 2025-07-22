@@ -248,7 +248,7 @@ mean_max_cape = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, max_cape_1D, nbins=6
 mean_iorg_cape = compute_2d_hist_stat(mean_pr_1D, iorg_1D, max_cape_1D, nbins=60, counts_thresh=10)
 
 
-# In[55]:
+# In[58]:
 
 
 fig = plt.figure(figsize=(12, 8))
@@ -290,8 +290,8 @@ cbar = plt.colorbar(pcm3, ax=ax3, label="TCWV (kg m$^{-2}$)",extend="both")
 
 # ax.clabel(cs, inline=True, fmt='%.1f', fontsize=10)
 
-ax3.set_xlabel("I$_{org}$")
-ax3.set_ylabel("Max precipitation (mm h$^{-1}$)")
+ax3.set_ylabel("I$_{org}$")
+ax3.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax3.set_xlim([0,7])
 ax3.text(6,0.85, "(b)",fontsize=14, fontweight="bold") # x, y, s
 
@@ -304,8 +304,8 @@ cbar = plt.colorbar(pcm4, ax=ax4, label="Max CAPE (J kg$^{-1}$)",extend="both")
 
 # ax.clabel(cs, inline=True, fmt='%.1f', fontsize=10)
 
-ax4.set_xlabel("I$_{org}$")
-ax4.set_ylabel("Max precipitation (mm h$^{-1}$)")
+ax4.set_ylabel("I$_{org}$")
+ax4.set_xlabel("Mean precipitation (mm h$^{-1}$)")
 ax4.set_xlim([0,7])
 ax4.text(6,0.85, "(d)",fontsize=14, fontweight="bold") # x, y, s
 

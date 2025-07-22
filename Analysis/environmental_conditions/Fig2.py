@@ -272,7 +272,7 @@ max_cape_iorg_result = bin_data_with_iorg_subsets(mean_pr_1D, max_cape_1D, iorg_
 
 
 
-# In[11]:
+# In[12]:
 
 
 # Create figure and axes
@@ -354,7 +354,7 @@ ax3.set_xlabel('Mean precipitation (mm h$^{-1}$)')
 ax3.set_ylabel('Max CAPE (J kg$^{-1}$)')
 ax3.legend(loc='upper left')
 ax3.set_xlim([0.1, 8.1])
-ax3.set_ylim([500,2750])
+ax3.set_ylim([300,2750])
 lines3, labels3 = ax3.get_legend_handles_labels()
 ax3.set_title("(c)")
 
