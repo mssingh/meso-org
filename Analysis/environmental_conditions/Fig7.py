@@ -65,7 +65,7 @@ get_ipython().run_cell_magic('time', '', '## IMERG daily to match ERA5 timestamp
 # In[6]:
 
 
-get_ipython().run_cell_magic('time', '', '## ERA5 vorticity\nvo500 = ds_vo500["vo"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\n# shear\nspeed_shear = ds_shear["vertical_shear"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\nwdir_shear = ds_shear["direction_shear"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\nwdir_shear_abs = np.abs(wdir_shear)\n')
+get_ipython().run_cell_magic('time', '', '## ERA5 vorticity\nvo500 = ds_vo500["vo"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\nvo500 = vo500.where(vo500.lat >= 0, -1 * vo500)\n# shear\nspeed_shear = ds_shear["vertical_shear"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\nwdir_shear = ds_shear["direction_shear"].sel(time=slice(mean_pr["time"][0],ds_shear["time"][-1])).where(lsm == 0).compute()\nwdir_shear_abs = np.abs(wdir_shear)\n')
 
 
 # In[7]:
@@ -118,7 +118,7 @@ speed_shear_1D = speed_shear.values.flatten()
 wdir_shear_1D = wdir_shear_abs.values.flatten()
 
 
-# In[15]:
+# In[9]:
 
 
 ## Vorticity at 500 hPa
@@ -132,7 +132,7 @@ mean_max_wdir = compute_2d_hist_stat(mean_pr_1D, max_pr_1D, wdir_shear_1D, ymin=
 mean_iorg_wdir = compute_2d_hist_stat(mean_pr_1D, iorg_1D, wdir_shear_1D, nbins=50, counts_thresh=10)
 
 
-# In[16]:
+# In[10]:
 
 
 fig = plt.figure(figsize=(12, 12))
@@ -142,7 +142,7 @@ fig = plt.figure(figsize=(12, 12))
 ax1 = fig.add_subplot(321)
 pcm1 = ax1.pcolormesh(
     mean_max_vo500["x"], mean_max_vo500["y"], mean_max_vo500["stat"],
-    cmap='RdYlBu_r', shading='auto', vmin=-1*10**(-5), vmax = 10**(-5)
+    cmap='RdYlBu_r', shading='auto', vmin=-1.5*10**(-5), vmax = 1.5*10**(-5)
 )
 cbar = plt.colorbar(pcm1, ax=ax1, label="Vorticity (s$^{-1}$)",extend="both")
 ax1.set_xlabel("Mean precipitation (mm h$^{-1}$)")
@@ -183,7 +183,7 @@ ax3.text(4.5, 135, "(e)",fontsize=14, fontweight="bold") # x, y, s
 ax4 = fig.add_subplot(322)
 pcm4 = ax4.pcolormesh(
     mean_iorg_vo500["x"], mean_iorg_vo500["y"], mean_iorg_vo500["stat"],
-    cmap='RdYlBu_r', shading='auto',vmin=-1*10**(-5), vmax = 10**(-5)
+    cmap='RdYlBu_r', shading='auto',vmin=-1.5*10**(-5), vmax = 1.5*10**(-5)
 )
 cbar = plt.colorbar(pcm4, ax=ax4, label="Vorticity (s$^{-1}$)",extend="both")
 ax4.set_ylabel("I$_{org}$")
