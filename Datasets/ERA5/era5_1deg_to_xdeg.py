@@ -55,6 +55,6 @@ if __name__ == "__main__":
 
     # put the variables and resolutions you want here
 
-    coarsen_and_save('tcwv', 2, 'tcwv')
-    coarsen_and_save('tcwv', 5, 'tcwv')
+    coarsen_and_save('vo', 2, 'vo500')
+    coarsen_and_save('vo', 5, 'vo500')
 
