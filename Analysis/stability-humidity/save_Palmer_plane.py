@@ -8,7 +8,7 @@ The phase plane is described in Palmer & Singh (2024).
 '''
 
 # Set debugging mode
-debug = 1
+debug =0 
 
 
 # Modules #########################################################
@@ -27,6 +27,7 @@ import numpy as np
 
 # Local modules
 import util
+import atm
 import functions
 
 # Parameters #######################################################
@@ -67,12 +68,15 @@ ds_sat = util.get_IMERG_data(grid=grid,time=time_period,chunks={"time":Nchunk})
 
 # Load the ERA5 data
 print("Loading ERA5 data...")
-variables = ["t","satfrac"]
+variables = ["t","q","z"]
 ds_ERA5 = util.get_ERA5_data(variables,grid=grid,time=time_period)
 ds_ERA5 = ds_ERA5.chunk({'time': Nchunk})
 
 # Convert to Pa
 ds_ERA5["level"] = ds_ERA5["level"]*100
+
+# Remove pressure levels we don't need
+ds_ERA5 = ds_ERA5.sel(level=slice(p_upper,p_lower))
 
 # get the landmask
 lsm = ds_ERA5["lsm"]
@@ -95,10 +99,31 @@ ds_sat["pr_based_max_pr_30min"] = max_pr
 
 
 ## calculate environments
+print('calculating environments...')
 
-# Humidity and height data missing, so use temp for now
-dMSEs = ds_ERA5["t"].sel(level=p_upper) -  ds_ERA5["t"].sel(level=p_lower)
-satdef = ds_ERA5["satfrac"]
+# Get constants
+c = atm.constants()
+
+# Calculate saturation MSE
+z = ds_ERA5["z"]/c.g
+MSEs = atm.calculate_MSE_sat(ds_ERA5["t"],ds_ERA5["level"],z)
+
+# Calculate stability index
+dMSEs = MSEs.sel(level=p_upper) -  MSEs.sel(level=p_lower)
+
+# Calculate the height difference
+dz = (z.sel(level=p_upper) -  z.sel(level=p_lower))
+
+# Calculate saturation deficit
+qs = atm.q_sat(ds_ERA5["t"],ds_ERA5["level"])
+satdef = c.Lv0*(qs - ds_ERA5["q"]) 
+
+# Calculate the integrated saturation deficit
+satdef = -np.trapz(satdef,z,axis=1)
+
+
+## Calculating histogram
+print('calculating environments...')
 
 # Flatten The precipitation data
 mean_pr = ds_sat.pr_based_mean_pr.values.flatten()
@@ -108,7 +133,7 @@ mean_area = ds_sat.pr_based_mean_area.values.flatten()
 
 # Flatten the environments
 dMSEs = dMSEs.values.flatten()
-satdef = satdef.values.flatten()
+satdef = satdef.flatten()
 
 # Remove the non-rainy points
 I = mean_pr>pr_thresh
@@ -121,10 +146,14 @@ mean_area = mean_area[I];
 dMSEs = dMSEs[I];
 satdef = satdef[I];
 
+dz_mean = np.mean(dz).values.item()
+satdef = satdef/dz_mean/1000
+dMSEs = dMSEs/1000;
+
 
 # Make the histogram ########################################################
-satdef_edges = np.linspace(0.5, 1, num=26, endpoint=True)
-dMSEs_edges = np.linspace(-25, -21, num=41, endpoint=True)
+satdef_edges = np.linspace(0, 20, num=81, endpoint=True)
+dMSEs_edges = np.linspace(-20, 20, num=161, endpoint=True)
 
 satdef_bins = (satdef_edges[0:-1]+satdef_edges[1:])/2
 dMSEs_bins = (dMSEs_edges[0:-1]+dMSEs_edges[1:])/2
@@ -137,7 +166,8 @@ max_pr_hist = functions.hist_2d_stat(satdef, dMSEs, max_pr, x_edges=satdef_edges
 
 # Make the dataset #########################################################
 
-
+# Creating dataset
+print('Creating histogram data')
 
 # Create Dataset
 ds = xr.Dataset(
@@ -157,11 +187,11 @@ ds = xr.Dataset(
 )
 
 ds["sat_deficit"].attrs["long name"] = "saturation deficit"
-ds["sat_deficit"].attrs["units"] = "J kg^{-1}"
+ds["sat_deficit"].attrs["units"] = "kJ kg^{-1}"
 ds["sat_deficit"].attrs["formula"] = "int{ Lv(q*-q) dz }"
 
 ds["stability"].attrs["long name"] = "stability index"
-ds["stability"].attrs["units"] = "J kg^{-1}"
+ds["stability"].attrs["units"] = "kJ kg^{-1}"
 ds["stability"].attrs["formula"] = "Delta{ MSE* }"
 
 ds["counts"].attrs["units"] = " "
@@ -189,6 +219,10 @@ ds["precip_thresh"] = xr.DataArray(pr_thresh)
 ds["precip_thresh"].attrs["long_name"] = "precipitation threshold for convection"
 ds["precip_thresh"].attrs["units"] = "mm hr^{-1}"
 
+ds["delta_z"] = xr.DataArray(dz_mean)
+ds["delta_z"].attrs["long_name"] = "average distance between pressure_lower and pressure_upper"
+ds["delta_z"].attrs["units"] = "m"
+
 ds["pressure_lower"] = xr.DataArray(p_lower)
 ds["pressure_lower"].attrs["long_name"] = "pressure at lower boundary of layer"
 ds["pressure_lower"].attrs["units"] = "Pa"
@@ -201,9 +235,6 @@ ds["pressure_upper"].attrs["units"] = "Pa"
 
 ds.to_netcdf("./processed_data/Palmer_plane_ocean_30S-30N.nc")
 
-
-
-# Plot the histogram #######################################################
 
 
 
