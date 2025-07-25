@@ -8,7 +8,7 @@ The phase plane is described in Palmer & Singh (2024).
 '''
 
 # Set debugging mode
-debug = 0
+debug = 1
 
 
 # Modules #########################################################
@@ -23,8 +23,7 @@ from glob import glob
 import xarray as xr
 import numpy as np
 
-# plotting modules
-import matplotlib.pyplot as plt
+
 
 # Local modules
 import util
@@ -206,34 +205,7 @@ ds.to_netcdf("./processed_data/Palmer_plane_ocean_30S-30N.nc")
 
 # Plot the histogram #######################################################
 
-fig = plt.figure(figsize=(5, 8))
 
-# Plot counts
-ax1 = fig.add_axes([0.1, 0.55, 0.8, 0.4])
-pcm1 = plt.pcolormesh(
-    satdef_edges, dMSEs_edges, mean_pr_hist["counts"].T,    
-    cmap='Blues',
-    shading='auto'
-)
-plt.colorbar(pcm1, label="Count",extend ="max")
-plt.ylabel("$\Delta T$ (K)")
-ax1.set_xlim([0.5,1])
-ax1.set_ylim([-25, -21])
-
-# Plot stat
-ax1 = fig.add_axes([0.1, 0.1, 0.8, 0.4])
-pcm1 = plt.pcolormesh(
-    satdef_edges, dMSEs_edges, mean_pr_hist["stat"].T,    
-    cmap='Blues',
-    shading='auto'
-)
-plt.colorbar(pcm1, label="mean precip. (mm hr$^{-1}$)",extend ="max")
-plt.xlabel("saturation fraction")
-plt.ylabel("$\Delta T$ (K)")
-ax1.set_xlim([0.5,1])
-ax1.set_ylim([-25, -21])
-
-fig.show()
 
 
 
